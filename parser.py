@@ -1,9 +1,13 @@
 from lexer import *
 from expression_handler.calculator import Calculator
 
+ID = 'id'
+NAME = 'name'
+
 ANNOUNCEMENT = 'announcement'
 GETITEM = 'getitem'
 REFERENCE = 'reference'
+
 
 class Parser:
 
@@ -33,11 +37,11 @@ class Parser:
                         return types_.ARRAY(length=value)
 
                     elif mode == GETITEM:
-                        variable = self.memory.get(name)
+                        variable = self.memory.get(NAME, val=name)
                         return variable.value[dimension]
 
                     elif mode == REFERENCE:
-                        start = self.memory.get(name).id
+                        start = self.memory.get(NAME, val=name).id
                         return start + dimension
                 else:
                     raise SyntaxError(
@@ -67,7 +71,7 @@ class Parser:
         else:
             raise SyntaxError(f'expected token <{{> received {self.lexer.token}')
 
-    def pointer_init(self, pointer_type):
+    def pointer_init(self):
         self.lexer.next_token()
 
         if self.lexer.token is REFERENCE:
@@ -90,7 +94,7 @@ class Parser:
             if self.lexer.token is VARIABLE:
                 name = self.lexer.name
 
-                if (variable := self.memory.get(name)) is not None:
+                if (variable := self.memory.get(NAME, val=name)) is not None:
                     # when parse element is array element
                     if isinstance(variable.value, types_.ARRAY):
                         self.lexer.next_token()
@@ -98,7 +102,7 @@ class Parser:
                             expression.token_storage.append(str(self.parse_array(name, mode='getitem')))
                     # when parse element is variable
                     else:
-                        variable = self.memory.get(name)
+                        variable = self.memory.get(NAME, val=name)
 
                         if variable.value is not None:
                             if variable.pointer:
@@ -168,7 +172,7 @@ class Parser:
             variable.value = self.calculate_expression()
 
     def construction(self, type_, name, pointer):
-        if self.memory.get(name) is None:
+        if self.memory.get(NAME, val=name) is None:
             self.lexer.next_token()
             variable = type_(name, pointer)
 
@@ -216,7 +220,7 @@ class Parser:
             if self.lexer.token in Lexer.TYPES.values():
                 self.announcement(type_=self.lexer.token)
             else:
-                self.initialize(variable=self.memory.get(self.lexer.name))
+                self.initialize(variable=self.memory.get(NAME, val=self.lexer.name))
             self.lexer.next_token()
 
 

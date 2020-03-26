@@ -182,7 +182,7 @@ class Memory(list):
         list.__init__([])
         self.last_viewed = None
 
-    def get(self, attr, val):
+    def get(self, attr: str, val: str):
         for variable in self:
             if val == variable.__dict__[attr]:
                 self.last_viewed = variable
