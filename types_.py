@@ -209,9 +209,12 @@ class ARRAY(list):
     def __init__(self, length):
         list.__init__([])
         self.length = length
-        # выделение памти на массив
-        for _ in range(length - 2):
-            print(next(memory))
+        self.alloc_memory(length)
+
+    def alloc_memory(self, length):
+        if self.__class__ is not Controller:
+            for _ in range(length - 2):
+                next(memory)
 
 
 class Controller(ARRAY):
