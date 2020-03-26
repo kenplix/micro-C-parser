@@ -29,8 +29,8 @@ def in_range(cls, number):
     return True if cls.min <= number <= cls.max else False
 
 
-# метод для автоматического определения типа числа
 def determine_type(number):
+    """Automatically determines the type of number"""
     find_all_sub(Integer) if isinstance(number, int) else find_all_sub(Floating)
     for cls in subclasses:
         if in_range(cls, number):
@@ -66,8 +66,7 @@ class Numeric(Object, metaclass=Type):
         super(Numeric, self).__init__(name, virtual_mode)
         self._pointer = pointer
         self.reference = reference
-        self.type_of_numbers = type_of_numbers  # float or int
-        # self.__class__ - type
+        self.type_of_numbers = type_of_numbers
 
     @property
     def pointer(self):
@@ -186,13 +185,6 @@ class Memory(list):
     def get(self, attr, val):
         for variable in self:
             if val == variable.__dict__[attr]:
-                self.last_viewed = variable
-                return variable
-
-    #  todo : написать нормальный гетер параметров (выше потестить)
-    def get(self, name: str):
-        for variable in self:
-            if name == variable.name or (name.isdigit() and name == variable.id):
                 self.last_viewed = variable
                 return variable
 
