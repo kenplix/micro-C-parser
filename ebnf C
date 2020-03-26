@@ -1,0 +1,44 @@
+ alphabetic_character = "A" | "B" | "C" | "D" | "E" | "F" | "G"
+                      | "H" | "I" | "J" | "K" | "L" | "M" | "N"
+                      | "O" | "P" | "Q" | "R" | "S" | "T" | "U"
+                      | "V" | "W" | "X" | "Y" | "Z" | "a" | "b"
+                      | "c" | "d" | "e" | "f" | "g" | "h" | "i"
+                      | "j" | "k" | "l" | "m" | "n" | "o" | "p"
+                      | "q" | "r" | "s" | "t" | "u"| "v" | "w"
+                      | "x" | "y" | "z" ;
+
+ digit = "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" ;
+
+ white_space = ? white_space characters ? ;
+
+ all_characters = ? all visible characters ? ;
+
+ unary_operator = "-" | "+" ;
+
+ number = [ unary_operator ], digit, { digit }, [ ".", digit, { digit } ] ;
+
+ string = ", { all_characters - " }, " ;
+
+ value = number | identifier ;
+
+ binary_operator = "-" | "+" | "*" | "/" ;
+
+ identifier = alphabetic_character | {_} , { alphabetic_character | digit } ;
+
+ act = value, binary_operator, value ;
+
+ expression = ( ( act, binary_operator ), expression ) | act ;
+
+ array = identifier, "[", [ expression | value ], "]"
+
+ assignment = identifier , "=" ;
+
+ value_assignment = assignment , ( ( expression | value ) | string ), ";" ;
+
+ array_assignment = assignment , "{", ( { ( expression | value ), "," } | expression ), "}", ";"
+
+ pointer = "*"
+
+ type = ("char" | "short" | "int" | "long" | "float" | "double"), [pointer]
+
+ announcement = type, ( array, [ array_assignment ] ) | ( identifier, [ value_assignment ] ), ";"
