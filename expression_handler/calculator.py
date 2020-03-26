@@ -2,7 +2,6 @@ import operator
 
 
 class Calculator:
-
     MATH_OPERATORS = {'+': operator.add,
                       '-': operator.sub,
                       '*': operator.mul,
@@ -89,9 +88,9 @@ class Calculator:
             if operator in expression:
                 index = 0
                 while index + 2 < len(expression):
-                    if expression[index] not in operators\
-                            and expression[index + 2] not in operators \
-                            and expression[index + 1] in operators:
+                    if expression[index] not in operators \
+                            and expression[index + 1] == operator \
+                            and expression[index + 2] not in operators:
 
                         pairs = calculate(*expression[index:index + 3])
                         del expression[index:index + 3]
@@ -120,8 +119,6 @@ class Calculator:
         self._execute(expression)
         return expression[0]
 
-    # вложение скобок
-
     @staticmethod
     def _build_hierarchy(pairs_of_brackets):
         hierarchy = {}
@@ -140,7 +137,6 @@ class Calculator:
     def spliter(key, delimiter=None):
         return map(lambda x: int(x), key.split(delimiter))
 
-    # первичные вычисления
     def _primary_calculations(self, hierarchy):
         calculated_hierarchy = {}
         for key, value in hierarchy.copy().items():
@@ -182,8 +178,8 @@ class Calculator:
                 if (calculated_start, calculated_end) in value:
                     calculated_part = self.token_storage[calculated_start:calculated_end + 1]
                     start_, end_ = self.find_range(dynamic_part, calculated_part)  # was part
-                    for index in range(start_, end_ + 1):
-                        dynamic_part[index] = '' if index != end_ else calculated_value
+                    for i in range(start_, end_ + 1):
+                        dynamic_part[i] = '' if index != end_ else calculated_value
 
             dynamic_part = [i for i in dynamic_part if i != '']
             calculated_hierarchy[key] = self._part_of_the_calculations(dynamic_part)
@@ -197,7 +193,8 @@ class Calculator:
         primary_calculated_hierarchy = self._primary_calculations(hierarchy)
         return self._other_calculations(hierarchy, primary_calculated_hierarchy)
 
+
 if __name__ == '__main__':
     test = Calculator()
-    test.token_storage = ['4','-','5']
+    test.token_storage = ['4', '-', '5']
     print(test.find_value())
