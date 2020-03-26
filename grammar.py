@@ -132,13 +132,13 @@ class REFERENCE(Checker):
 
     @cached_property
     def allowed_inheritors(self):
-        return VARIABLE, CONSTANT  # если константа то прямое указание на адрес в памяти
+        return VARIABLE, CONSTANT
 
 
 class ASSIGNMENT(Checker):
 
     @cached_property
-    def allowed_inheritors(self):  #semi test
+    def allowed_inheritors(self):
         return VARIABLE, CONSTANT, REFERENCE, LBR, MUL, LBRC, ADD, MUL, DIV, SUB
 
 
