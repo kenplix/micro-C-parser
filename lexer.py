@@ -42,13 +42,13 @@ class Lexer:
                '||': OR,
                '&&': AND}
 
-    ch = ' '  # assume the first char is a space (not EOF) чтобы не завершить выполнение
+    ch = ' '  # assume the first char is a space (not EOF)
 
     def __init__(self, code):
         self.code = code
         self.iterator = iter(code)
         self.token = START
-        self.index = -1  # потому что 1 символ это пробел для того чтобы не завершить выполнение
+        self.index = -1  # because first ch is a space
         self.line = 0
 
     def _next_char(self):
@@ -125,13 +125,12 @@ class Lexer:
             temp_var_name += self.ch
             self._next_char()
 
-
         if temp_var_name in Lexer.WORDS:
             self.token = Lexer.WORDS[temp_var_name]
         elif temp_var_name in Lexer.TYPES:
             self.token = Lexer.TYPES[temp_var_name]
         else:
-            self.token = VARIABLE  # Lexer.ID
+            self.token = VARIABLE
             self.name = temp_var_name
 
     @staticmethod
