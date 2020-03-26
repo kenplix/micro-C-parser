@@ -179,7 +179,7 @@ class Calculator:
                     calculated_part = self.token_storage[calculated_start:calculated_end + 1]
                     start_, end_ = self.find_range(dynamic_part, calculated_part)  # was part
                     for i in range(start_, end_ + 1):
-                        dynamic_part[i] = '' if index != end_ else calculated_value
+                        dynamic_part[i] = '' if i != end_ else calculated_value
 
             dynamic_part = [i for i in dynamic_part if i != '']
             calculated_hierarchy[key] = self._part_of_the_calculations(dynamic_part)
@@ -193,8 +193,8 @@ class Calculator:
         primary_calculated_hierarchy = self._primary_calculations(hierarchy)
         return self._other_calculations(hierarchy, primary_calculated_hierarchy)
 
-
+# todo : logic operations
 if __name__ == '__main__':
     test = Calculator()
-    test.token_storage = ['4', '-', '5']
+    test.token_storage = ['4', '!=', '5']
     print(test.find_value())

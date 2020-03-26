@@ -213,7 +213,7 @@ class ARRAY(list):
 
     def alloc_memory(self, length):
         if self.__class__ is not Controller:
-            for _ in range(length - 2):
+            for _ in range(length - 1):
                 next(memory)
 
 
@@ -246,7 +246,7 @@ class Controller(ARRAY):
     def append(self, data):
         self.counter += 1
         if self.counter > self.length:
-            raise IndexError(f'list index out of range - {self.variable.value.length}')
+            raise IndexError(f'list index out of range - {self.length}')
 
         if isinstance(data, int) or isinstance(data, float):
             self._add_number(data)

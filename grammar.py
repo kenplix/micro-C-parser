@@ -6,7 +6,7 @@ class START(Checker):
 
     @cached_property
     def allowed_inheritors(self):
-        find_all_sub(Integer, Floating)  # temp constant for test
+        find_all_sub(Integer, Floating)
         return subclasses
 
 
