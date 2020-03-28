@@ -187,6 +187,7 @@ class Parser:
         else:
             variable.value = self.calculate_expression()
 
+    # good
     def construction(self, name, pointer, mode):
         if self.memory.get(NAME, val=name) is None:
             self.lexer.next_token()
@@ -207,6 +208,7 @@ class Parser:
                     f'(new) <{self.type_.__class__.__name__}> *{pointer} '
                     f'(old) <{self.variable.__class__.__name__}> *{self.variable.pointer}')
 
+    # good
     def classification(self, mode):
         self.lexer.next_token()
 
@@ -218,23 +220,35 @@ class Parser:
         elif self.lexer.token is VARIABLE:
             self.construction(name=self.lexer.name, pointer=False, mode=mode)
 
-
+    #
     def determination(self, mode):
-        self.type_ = self.lexer.token
+        """
+        Determines the next step by set mode
+        Modes: ANNOUNCEMENT, INITIALIZE
+        In ANNOUNCEMENT parses lines similar to:
+        * type var1, *var2, var3[<expr>], ...;
+
+        In INITIALIZE parses lines similar to:
+        * type var = ...;
+        * type var[] = ...;
+        After the assignment operator, control passes to the initializer,
+        which parses the expression in accordance with the declaration
+        """
+        if mode == ANNOUNCEMENT:
+            self.type_ = self.lexer.token
+
         self.classification(mode)
-        # type var = expr;
         if self.lexer.token is ASSIGNMENT:
             self.lexer.next_token()
             self.initialize(self.variable)
         else:
-            # type var1, *var2, var3[expr], ...;
             if mode == ANNOUNCEMENT:
                 while self.lexer.token is not SEMICOLON:
                     if self.lexer.token is COMMA:
                         self.lexer.next_token()
                     self.classification(mode)
             else:
-                raise SyntaxError('cant init more 1 var')
+                raise SyntaxError('You cannot initialize more than one variable in a declaration line')
 
     def parse(self):
         self.lexer.next_token()
@@ -248,7 +262,7 @@ class Parser:
 
 # todo : переписать логику инициализации и обьявления, нужно индентифицировать конструкцию [*]var[[expr]]
 if __name__ == '__main__':
-    l = Lexer('int a[] = {77 -(91*2)/3}; int c = 33; c = a[0]')
+    l = Lexer('int a[] = {77 -(91*2)/3, 5}, p; int c = 33; c = a[1];')
     # l = Lexer('int a[] = {77 -(91*2)/3}; int c = 33;')
     # l = Lexer('int a[4] = {7 - 99*2- (88/3),3, 566.2, 4554-888};')
     p = Parser(l)
