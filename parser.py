@@ -234,6 +234,7 @@ class Parser:
         After the assignment operator, control passes to the initializer,
         which parses the expression in accordance with the declaration
         """
+
         if mode == ANNOUNCEMENT:
             self.type_ = self.lexer.token
 
