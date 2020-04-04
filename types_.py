@@ -1,6 +1,6 @@
 from utilities import *
 
-memory = map(lambda x: str(x), range(0, 1000))
+memory = map(lambda x: x, range(0, 1000))
 
 
 def type_crop(from_type, to_type, number):
@@ -182,11 +182,26 @@ class Memory(list):
         list.__init__([])
         self.last_viewed = None
 
-    def get(self, attr: str, val: str):
+    def get_by_id(self, id, throw = False):
         for variable in self:
-            if val == variable.__dict__[attr]:
+
+            if isinstance(variable.value, ARRAY):
+                if variable.id <= id <= variable.id + variable.value.length - 1:
+                    return variable
+            else:
+                if id == variable.id:
+                    self.last_viewed = variable
+                    return variable
+        if throw:
+            raise Exception(f'Variable with id - <{id}> not declared')
+
+    def get_by_name(self, name: str, throw = False):
+        for variable in self:
+            if name == variable.name:
                 self.last_viewed = variable
                 return variable
+        if throw:
+            raise Exception(f'Variable name - <{name}> not declared')
 
 
 class NonNegative:
@@ -227,31 +242,36 @@ class Controller(ARRAY):
         return f'{self.variable.value}'
 
     def _check_type_compatibility(self, variable):
-        # print(f'get type - {variable.__class__}, array type - {self.variable.__class__}')
         if self.variable.pointer != variable.pointer:
             raise TypeError(f'different types of pointers')
         if isinstance(variable.value, ARRAY):
             raise TypeError('array inside array')
 
         crop_func = type_crop if variable.size <= self.variable.__class__.size else crop
-        self.variable.value.append(crop_func(from_type=variable.__class__,
-                                             to_type=self.variable.__class__,
-                                             number=variable.value))
+        return crop_func(from_type=variable.__class__,
+                         to_type=self.variable.__class__,
+                         number=variable.value)
 
     def _add_number(self, number):
-        variable = determine_type(number)()
+        variable = determine_type(number)(virtual_mode=True)
         variable.value = number
-        self._check_type_compatibility(variable=variable)
+        return self._check_type_compatibility(variable=variable)
+
+    def _data_checker(self, data):
+        if isinstance(data, int) or isinstance(data, float):
+            return self._add_number(data)
+        else:
+            return self._check_type_compatibility(variable=data)
+
+    def setitem(self, data, position):
+        self.variable.value[position] = self._data_checker(data)
 
     def append(self, data):
         self.counter += 1
         if self.counter > self.length:
             raise IndexError(f'list index out of range - {self.length}')
 
-        if isinstance(data, int) or isinstance(data, float):
-            self._add_number(data)
-        else:
-            self._check_type_compatibility(variable=data)
+        self.variable.value.append(self._data_checker(data))
 
 
 if __name__ == '__main__':

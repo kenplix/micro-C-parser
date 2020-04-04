@@ -1,13 +1,12 @@
 from lexer import *
 from expression_handler.calculator import Calculator
 
-ID = 'id'
-NAME = 'name'
+_ANNOUNCEMENT = 'announcement'
+_INITIALIZE = 'initialize'
 
-ANNOUNCEMENT = 'announcement'
-INITIALIZE = 'initialize'
-GETITEM = 'getitem'
-REFERENCE = 'reference'
+_GETITEM = 'getitem'
+_SETITEM = 'setitem'
+_REFERENCE = 'reference'
 
 
 class Parser:
@@ -16,61 +15,71 @@ class Parser:
         self.lexer = lexer
         self.memory = types_.Memory()
 
+        self.token = None
+        self.index = None
+
+    def _step(self):
+        self.lexer.next_token()
+        self.ch = self.lexer.ch
+        self.name = self.lexer.name
+        self.value = self.lexer.value
+        self.token = self.lexer.token
+
     def is_WS_before(self, token, /):
-        ch = self.lexer.ch
-        if self.lexer.token is token:
-            if ch == ' ':
+        #ch = self.ch # не будет работать
+        if self.token is token:
+            if self.ch == ' ':
                 raise SyntaxError(f'WS before {token}')
             return False
         else:
-            raise SyntaxError(f'Ожидается другой токен {token} получен {self.lexer.token}')
+            raise SyntaxError(f'Ожидается другой токен {token} получен {self.token}')
 
     # arr[<expression>] = {<expression>, <expression>, ..., <expression>}
     def parse_array(self, name, pointer=False, *, mode):
 
         def define_action(dimension):
             if isinstance(dimension, int):
+                if mode == _ANNOUNCEMENT:
+                    self._step()
+                    return types_.ARRAY(length=value)
 
-                if self.lexer.token is RSBR:
+                elif mode == _GETITEM:
+                    variable = self.memory.get_by_name(name, throw=True)
+                    return variable.value[dimension]
 
-                    if mode == ANNOUNCEMENT:
-                        self.lexer.next_token()
-                        return types_.ARRAY(length=value)
+                elif mode == _SETITEM:
+                    self._step()
+                    self.memory.get_by_name(name, throw=True)
+                    return dimension
 
-                    elif mode == GETITEM:
-                        variable = self.memory.get(NAME, val=name)
-                        return variable.value[dimension]
-
-                    elif mode == REFERENCE:
-                        start = self.memory.get(NAME, val=name).id
-                        return start + dimension
-                else:
-                    raise SyntaxError(
-                        f'unexpected token - {self.lexer.token.__name__}, should be <]>')
+                elif mode == _REFERENCE:
+                    start = self.memory.get_by_name(name, throw=True)
+                    return start.id + dimension
             else:
-                raise SyntaxError('define_action type must be <INTEGER> and not <FRACTIONAL>')
+                raise SyntaxError('Define_action type must be <INTEGER> and not <FRACTIONAL>')
 
         if pointer:
-            raise SyntaxError('not implemented feature')
+            raise SyntaxError('Not implemented feature')
 
-        self.lexer.next_token()
+        self._step()
         value = self.calculate_expression(stop_tokens=(RSBR,))  # in [...]
         return define_action(value)
 
-    #todo: есть массив нулевой длинны, создавать его заново когда длинна известна
+
     def array_init(self, controller: types_.Controller):
         temp_array = []
-        if self.lexer.token is LBRC:
-            self.lexer.next_token()
+        if self.token is LBRC:
+            self._step()
             while True:
                 temp_array.append(self.calculate_expression(stop_tokens=(COMMA, RBRC)))
-                if self.lexer.token is RBRC:
+                if self.token is RBRC:
                     break
-                self.lexer.next_token()
+                self._step()
 
             if controller.length == 0:
                 array = types_.ARRAY(length=len(temp_array))
                 variable = controller.variable
+
                 variable.value = array
                 controller = types_.Controller(variable)
 
@@ -81,189 +90,228 @@ class Parser:
                 raise SyntaxError('controller.length < len(temp_array)')
 
             list(map(lambda element: controller.append(element), temp_array))
-            # step to semicolon
-            self.lexer.next_token()
+            self._step()
         else:
-            raise SyntaxError(f'expected token <{{> received {self.lexer.token}')
+            raise SyntaxError(f'expected token <{{> received {self.token}')
 
+    def set_array_elem(self, controller: types_.Controller):
+        controller.setitem(self.calculate_expression(), self.index)
+
+    # нужно передавать как у
     def pointer_init(self):
-        self.lexer.next_token()
+        # token = self.lexer.token
+        if self.token is REFERENCE:
+            self._step()
+            if self.token is VARIABLE:
+                variable = self.memory.get_by_name(self.name, throw=True)
+                self._step()
+                if self.token is SEMICOLON:
+                    return variable.__class__, variable.id
 
-        if self.lexer.token is REFERENCE:
-            pass
+                elif not self.is_WS_before(LSBR):
+                    self._step()
+                    id = self.parse_array(variable.name, variable.pointer, mode=_REFERENCE)
+                    return variable.__class__, id
 
-    def skip_to(self, token):
-        while self.lexer.token != token:
-            self.lexer.next_token()
-            if self.lexer.token is EOF:
-                raise Exception(f'token not found <{token}>')
+        elif self.token is VARIABLE:
+            variable = self.memory.get_by_name(self.name)
+            if variable.pointer:
+                self._step()
+                return variable.__class__, variable.reference
+            else:
+                raise SyntaxError(f'<{variable.name}> not a pointer variable')
+        else:
+            raise SyntaxError(f'Unexpected token {self.token} expected <REFERENCE> or <VARIABLE>')
 
-    def parse_expression(self, stop_tokens: tuple):
+    def _scroller(self, token):
+        while self.token != token:
+            self._step()
+            if self.token is EOF:
+                raise SyntaxError(f'Token not found <{token}>')
+
+    def _expression_parser(self, stop_tokens: tuple):
         expression = Calculator()
         ch = None
         star_flag = None
 
         while True:
-            if self.lexer.token is VARIABLE:
-                name = self.lexer.name
+            if self.token is VARIABLE:
+                name = self.name
 
-                if (variable := self.memory.get(NAME, val=name)) is not None:
+                if (variable := self.memory.get_by_name(name, throw=True)):
                     # when parse element is array element
                     if isinstance(variable.value, types_.ARRAY):
-                        self.lexer.next_token()
+                        self._step()
                         if not self.is_WS_before(LSBR):
-                            expression.token_storage.append(str(self.parse_array(name, mode='getitem')))
+                            expression.token_storage.append(str(self.parse_array(name, mode=_GETITEM)))
                     # when parse element is variable
                     else:
-                        variable = self.memory.get(NAME, val=name)
+                        variable = self.memory.get_by_name(name)
 
-                        if variable.value is not None:
-                            if variable.pointer:
-                                if star_flag and ch != ' ':
-                                    expression.token_storage.pop()
-                                else:
-                                    raise SyntaxError('error in pointer construction')
-
-                            expression.token_storage.append(str(variable.value))
+                        if variable.pointer:
+                            if star_flag and ch != ' ':
+                                expression.token_storage.pop()
+                                id = int(variable.reference)
+                                value = str(self.memory.get_by_id(id).value[id])
+                                expression.token_storage.append(value)
+                            else:
+                                raise SyntaxError('Error in pointer construction')
                         else:
-                            raise SyntaxError(f'variable - <{name}> not defined')
-                else:
-                    raise Exception(f'variable name - <{name}> not declared')
+                            if variable.value is not None:
+                                expression.token_storage.append(str(variable.value))
+                            else:
+                                raise SyntaxError(f'Variable - <{name}> not defined')
 
-            elif self.lexer.token is CONSTANT:
-                expression.token_storage.append(str(self.lexer.value))
+            elif self.token is CONSTANT:
+                expression.token_storage.append(str(self.value))
 
-            elif self.lexer.token is LBR:
+            elif self.token is LBR:
                 expression.token_storage.append('(')
 
-            elif self.lexer.token is RBR:
+            elif self.token is RBR:
                 expression.token_storage.append(')')
 
-            elif self.lexer.token.__base__ is OPERATOR:
-                expression.token_storage.append(self.lexer.token.operator)
-                if self.lexer.token is MUL:
+            elif self.token.__base__ is OPERATOR:
+                expression.token_storage.append(self.token.operator)
+                if self.token is MUL:
                     star_flag = True
-                    ch = self.lexer.ch
+                    ch = self.ch
 
-            elif self.lexer.token is QUESTION_MARK:
+            elif self.token is QUESTION_MARK:
                 stop_tokens = (QUESTION_MARK,)
 
-            elif self.lexer.token.__base__ is LOGIC:
-                expression.token_storage.append(self.lexer.token.operator)
+            elif self.token.__base__ is LOGIC:
+                expression.token_storage.append(self.token.operator)
 
-            elif self.lexer.token in stop_tokens:
+            elif self.token in stop_tokens:
                 break
 
             else:
                 raise SyntaxError(
-                    f'unacceptable token - <{self.lexer.token}> in expression expected token {stop_tokens}')
+                    f'unacceptable token - <{self.token}> in expression expected token {stop_tokens}')
 
-            self.lexer.next_token()
+            self._step()
 
         return expression, stop_tokens
 
     def calculate_expression(self, stop_tokens=(SEMICOLON,)):
-        expression, stop_tokens = self.parse_expression(stop_tokens)
+        expression, stop_tokens = self._expression_parser(stop_tokens)
 
         if QUESTION_MARK in stop_tokens:
             if expression.find_value():
-                expression, *_ = self.parse_expression(stop_tokens=(COLON,))
-                self.skip_to(token=SEMICOLON)
+                expression, *_ = self._expression_parser(stop_tokens=(COLON,))
+                self._scroller(token=SEMICOLON)
             else:
-                self.skip_to(token=COLON)
-                expression, *_ = self.parse_expression(stop_tokens=(SEMICOLON,))
+                self._scroller(token=COLON)
+                expression, *_ = self._expression_parser(stop_tokens=(SEMICOLON,))
 
         if RSBR in stop_tokens and not expression.token_storage:
-            return 0 # for init unk length array
+            return 0 # to initialize an array of undeclared lengths
 
         return expression.find_value()
 
-    def initialize(self, variable):
+    def _initializer(self, variable):
 
         if isinstance(variable.value, types_.ARRAY):
-            self.array_init(types_.Controller(variable))
+            if self.index is not None:
+                self.set_array_elem(types_.Controller(variable))
+            else:
+                self.array_init(types_.Controller(variable))
+
         elif variable.pointer:
-            variable.value = self.pointer_init()
+            type, reference = self.pointer_init()
+            if variable.__class__ is not type:
+                raise SyntaxError(f'Different types : {variable.__class__} and {type}')
+            variable.reference = reference
+
         else:
             variable.value = self.calculate_expression()
 
-    # good
-    def construction(self, name, pointer, mode):
-        if self.memory.get(NAME, val=name) is None:
-            self.lexer.next_token()
+    def _constructor(self, name, pointer, mode):
+        if self.memory.get_by_name(name) is None:
+            if mode == _INITIALIZE:
+                raise SyntaxError(f'The variable <{name}> has not been declared')
+
+            self._step()
             self.variable = self.type_(name, pointer)
 
-            if self.lexer.token in (COMMA, SEMICOLON, ASSIGNMENT):
+            if self.token in (COMMA, SEMICOLON, ASSIGNMENT):
                 self.memory.append(self.variable)
 
             elif not self.is_WS_before(LSBR):
-                array_res = self.parse_array(name, pointer, mode=mode)
-                self.variable.value = array_res
+                array = self.parse_array(name, pointer, mode=mode)
+                self.variable.value = array
                 self.memory.append(self.variable)
         else:
+            if mode == _ANNOUNCEMENT:
+                raise SyntaxError(f'Redefinition of <{name}>')
+
             self.variable = self.memory.last_viewed
-            if mode == ANNOUNCEMENT:
-                raise SyntaxError(
-                    f'redefinition of <{name}> : '
-                    f'(new) <{self.type_.__class__.__name__}> *{pointer} '
-                    f'(old) <{self.variable.__class__.__name__}> *{self.variable.pointer}')
+            self._step()
 
-    # good
-    def classification(self, mode):
-        self.lexer.next_token()
+            if self.token is ASSIGNMENT:
+                pass
+            elif not self.is_WS_before(LSBR):
+                self.index = self.parse_array(name, pointer, mode=_SETITEM)
+            else:
+                raise SyntaxError(f'unacceptable token - <{self.token}>')
 
-        if self.lexer.token is MUL:
-            self.lexer.next_token()
-            if not self.is_WS_before(VARIABLE):
-                self.construction(name=self.lexer.name, pointer=True, mode=mode)
 
-        elif self.lexer.token is VARIABLE:
-            self.construction(name=self.lexer.name, pointer=False, mode=mode)
+    def _classifier(self, mode):
+        if mode == _ANNOUNCEMENT:
+            self._step()
 
-    #
-    def determination(self, mode):
+        if self.token is MUL:
+            self._step()
+            if self.token is VARIABLE:
+                self._constructor(name=self.name, pointer=True, mode=mode)
+
+        elif self.token is VARIABLE:
+            self._constructor(name=self.name, pointer=False, mode=mode)
+
+    def _determinator(self, mode: str):
         """
         Determines the next step by set mode
-        Modes: ANNOUNCEMENT, INITIALIZE
-        In ANNOUNCEMENT parses lines similar to:
+
+        Modes: _ANNOUNCEMENT, _INITIALIZE
+
+        In _ANNOUNCEMENT parses lines similar to:
         * type var1, *var2, var3[<expr>], ...;
 
-        In INITIALIZE parses lines similar to:
+        In _INITIALIZE parses lines similar to:
         * type var = ...;
         * type var[] = ...;
         After the assignment operator, control passes to the initializer,
         which parses the expression in accordance with the declaration
         """
+        if mode == _ANNOUNCEMENT:
+            self.type_ = self.token
 
-        if mode == ANNOUNCEMENT:
-            self.type_ = self.lexer.token
-
-        self.classification(mode)
-        if self.lexer.token is ASSIGNMENT:
-            self.lexer.next_token()
-            self.initialize(self.variable)
+        self._classifier(mode)
+        if self.token is ASSIGNMENT:
+            self._step()
+            self._initializer(self.variable)
         else:
-            if mode == ANNOUNCEMENT:
-                while self.lexer.token is not SEMICOLON:
-                    if self.lexer.token is COMMA:
-                        self.lexer.next_token()
-                    self.classification(mode)
+            if mode == _ANNOUNCEMENT:
+                while self.token is not SEMICOLON:
+                    if self.token is COMMA:
+                        self._step()
+                    self._classifier(mode)
             else:
                 raise SyntaxError('You cannot initialize more than one variable in a declaration line')
 
     def parse(self):
-        self.lexer.next_token()
-        while self.lexer.token != EOF:
-            if self.lexer.token in Lexer.TYPES.values():
-                self.determination(mode=ANNOUNCEMENT)
+        self._step()
+        while self.token != EOF:
+            if self.token in Lexer.TYPES.values():
+                self._determinator(mode=_ANNOUNCEMENT)
             else:
-                self.determination(mode=INITIALIZE)
+                self._determinator(mode=_INITIALIZE)
 
-            self.lexer.next_token()
+            self._step()
 
-# todo : переписать логику инициализации и обьявления, нужно индентифицировать конструкцию [*]var[[expr]]
 if __name__ == '__main__':
-    l = Lexer('int a[] = {77 -(91*2)/3, 5}, p; int c = 33; c = a[1];')
+    l = Lexer('int a[] = {77 -(91*2)/3, 5}; int *q = &a; a[0] = *q + 2;')
     # l = Lexer('int a[] = {77 -(91*2)/3}; int c = 33;')
     # l = Lexer('int a[4] = {7 - 99*2- (88/3),3, 566.2, 4554-888};')
     p = Parser(l)
