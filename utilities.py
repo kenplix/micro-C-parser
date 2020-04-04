@@ -1,9 +1,8 @@
 subclasses = []
 
-# метод для нахождения подклассов
-# параметр _counter служит для обнуления результата поиска и является служебным
-def find_all_sub(*cls, _counter: int = 0):
 
+def find_all_sub(*cls, _counter: int = 0):
+    """:param _counter Serves to nullify the search result and is a service"""
     if _counter == 0:
         subclasses.clear()
 

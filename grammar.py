@@ -1,3 +1,8 @@
+"""
+Defines the grammar of the language according to LL(1)
+by indicating the directional characters of each token
+"""
+
 from types_ import Integer, Floating
 from utilities import *
 

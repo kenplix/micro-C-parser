@@ -1,3 +1,7 @@
+"""
+Performs all callbacks associated with C data types
+"""
+
 from utilities import *
 
 memory = map(lambda x: x, range(0, 1000))

@@ -1,3 +1,7 @@
+"""
+Turns a string into a list of tokens
+"""
+
 import types_
 from grammar import *
 

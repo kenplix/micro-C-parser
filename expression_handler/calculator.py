@@ -1,3 +1,7 @@
+'''
+Processes mathematical expressions of any nesting
+'''
+
 import operator
 
 
@@ -192,9 +196,3 @@ class Calculator:
         hierarchy = self._build_hierarchy(br_pairs)
         primary_calculated_hierarchy = self._primary_calculations(hierarchy)
         return self._other_calculations(hierarchy, primary_calculated_hierarchy)
-
-# todo : logic operations
-if __name__ == '__main__':
-    test = Calculator()
-    test.token_storage = ['4', '!=', '5']
-    print(test.find_value())

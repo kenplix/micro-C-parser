@@ -30,7 +30,9 @@ class Parser:
 
     # arr[<expression>] = {<expression>, <expression>, ..., <expression>}
     def _parse_array(self, name, pointer=False, *, mode):
-
+        """
+        Defines actions with arrays
+        """
         def define_action(dimension):
             if isinstance(dimension, int):
                 if mode == _ANNOUNCEMENT:
@@ -198,6 +200,9 @@ class Parser:
         return expression.find_value()
 
     def _initializer(self, variable):
+        """
+        Defines initialization mode
+        """
         if isinstance(variable.value, types_.ARRAY):
             if self.index is not None:
                 self._set_array_elem(types_.Controller(variable))
@@ -214,6 +219,9 @@ class Parser:
             variable.value = self.calculate_expression()
 
     def _constructor(self, name, pointer, mode):
+        """
+        Prepares collected data
+        """
         if self.memory.get_by_name(name) is None:
             if mode == _INITIALIZE:
                 raise SyntaxError(f'The variable <{name}> has not been declared')
@@ -241,6 +249,9 @@ class Parser:
                 self.index = self._parse_array(name, pointer, mode=_SETITEM)
 
     def _classifier(self, mode):
+        """
+        Defines a part: *var or var
+        """
         if mode == _ANNOUNCEMENT:
             self._step()
 
