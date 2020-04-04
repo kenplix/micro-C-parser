@@ -1,3 +1,6 @@
+#!/usr/bin/python3
+# -*- coding: UTF-8 -*-
+
 from lexer import *
 from expression_handler.calculator import Calculator
 
@@ -25,17 +28,8 @@ class Parser:
         self.value = self.lexer.value
         self.token = self.lexer.token
 
-    def is_WS_before(self, token, /):
-        #ch = self.ch # не будет работать
-        if self.token is token:
-            if self.ch == ' ':
-                raise SyntaxError(f'WS before {token}')
-            return False
-        else:
-            raise SyntaxError(f'Ожидается другой токен {token} получен {self.token}')
-
     # arr[<expression>] = {<expression>, <expression>, ..., <expression>}
-    def parse_array(self, name, pointer=False, *, mode):
+    def _parse_array(self, name, pointer=False, *, mode):
 
         def define_action(dimension):
             if isinstance(dimension, int):
@@ -65,8 +59,10 @@ class Parser:
         value = self.calculate_expression(stop_tokens=(RSBR,))  # in [...]
         return define_action(value)
 
+    def _set_array_elem(self, controller: types_.Controller):
+        controller.setitem(self.calculate_expression(), self.index)
 
-    def array_init(self, controller: types_.Controller):
+    def _array_init(self, controller: types_.Controller):
         temp_array = []
         if self.token is LBRC:
             self._step()
@@ -87,47 +83,43 @@ class Parser:
                 zeros = [0 for _ in range(controller.length - len(temp_array))]
                 temp_array.extend(zeros)
             else:
-                raise SyntaxError('controller.length < len(temp_array)')
+                raise SyntaxError('Invalid array length')
 
             list(map(lambda element: controller.append(element), temp_array))
             self._step()
         else:
-            raise SyntaxError(f'expected token <{{> received {self.token}')
+            raise SyntaxError(f'Unacceptable token {self.token}')
 
-    def set_array_elem(self, controller: types_.Controller):
-        controller.setitem(self.calculate_expression(), self.index)
-
-    # нужно передавать как у
-    def pointer_init(self):
-        # token = self.lexer.token
+    def _pointer_init(self):
         if self.token is REFERENCE:
             self._step()
             if self.token is VARIABLE:
                 variable = self.memory.get_by_name(self.name, throw=True)
                 self._step()
+
                 if self.token is SEMICOLON:
                     return variable.__class__, variable.id
 
-                elif not self.is_WS_before(LSBR):
+                elif self.token is LSBR:
+                    id_ = self._parse_array(variable.name, variable.pointer, mode=_REFERENCE)
                     self._step()
-                    id = self.parse_array(variable.name, variable.pointer, mode=_REFERENCE)
-                    return variable.__class__, id
+                    return variable.__class__, id_
 
         elif self.token is VARIABLE:
-            variable = self.memory.get_by_name(self.name)
+            variable = self.memory.get_by_name(self.name, throw=True)
             if variable.pointer:
                 self._step()
                 return variable.__class__, variable.reference
             else:
                 raise SyntaxError(f'<{variable.name}> not a pointer variable')
         else:
-            raise SyntaxError(f'Unexpected token {self.token} expected <REFERENCE> or <VARIABLE>')
+            raise SyntaxError(f'Unacceptable token {self.token}')
 
     def _scroller(self, token):
         while self.token != token:
             self._step()
             if self.token is EOF:
-                raise SyntaxError(f'Token not found <{token}>')
+                raise SyntaxError(f'Token not found {token}')
 
     def _expression_parser(self, stop_tokens: tuple):
         expression = Calculator()
@@ -137,30 +129,26 @@ class Parser:
         while True:
             if self.token is VARIABLE:
                 name = self.name
+                variable = self.memory.get_by_name(name, throw=True)
 
-                if (variable := self.memory.get_by_name(name, throw=True)):
-                    # when parse element is array element
-                    if isinstance(variable.value, types_.ARRAY):
-                        self._step()
-                        if not self.is_WS_before(LSBR):
-                            expression.token_storage.append(str(self.parse_array(name, mode=_GETITEM)))
-                    # when parse element is variable
-                    else:
-                        variable = self.memory.get_by_name(name)
-
-                        if variable.pointer:
-                            if star_flag and ch != ' ':
-                                expression.token_storage.pop()
-                                id = int(variable.reference)
-                                value = str(self.memory.get_by_id(id).value[id])
-                                expression.token_storage.append(value)
-                            else:
-                                raise SyntaxError('Error in pointer construction')
+                if isinstance(variable.value, types_.ARRAY):
+                    self._step()
+                    if self.token is LSBR:
+                        expression.token_storage.append(str(self._parse_array(name, mode=_GETITEM)))
+                else:
+                    if variable.pointer:
+                        if star_flag and ch != ' ':
+                            expression.token_storage.pop()
+                            id_ = int(variable.reference)
+                            value = str(self.memory.get_by_id(id_).value[id_])
+                            expression.token_storage.append(value)
                         else:
-                            if variable.value is not None:
-                                expression.token_storage.append(str(variable.value))
-                            else:
-                                raise SyntaxError(f'Variable - <{name}> not defined')
+                            raise SyntaxError('Error in pointer construction')
+                    else:
+                        if variable.value is not None:
+                            expression.token_storage.append(str(variable.value))
+                        else:
+                            raise SyntaxError(f'Variable <{name}> not defined')
 
             elif self.token is CONSTANT:
                 expression.token_storage.append(str(self.value))
@@ -187,8 +175,7 @@ class Parser:
                 break
 
             else:
-                raise SyntaxError(
-                    f'unacceptable token - <{self.token}> in expression expected token {stop_tokens}')
+                raise SyntaxError(f'Unacceptable token {self.token}')
 
             self._step()
 
@@ -206,22 +193,21 @@ class Parser:
                 expression, *_ = self._expression_parser(stop_tokens=(SEMICOLON,))
 
         if RSBR in stop_tokens and not expression.token_storage:
-            return 0 # to initialize an array of undeclared lengths
+            return 0  # to initialize an array of undeclared lengths
 
         return expression.find_value()
 
     def _initializer(self, variable):
-
         if isinstance(variable.value, types_.ARRAY):
             if self.index is not None:
-                self.set_array_elem(types_.Controller(variable))
+                self._set_array_elem(types_.Controller(variable))
             else:
-                self.array_init(types_.Controller(variable))
+                self._array_init(types_.Controller(variable))
 
         elif variable.pointer:
-            type, reference = self.pointer_init()
-            if variable.__class__ is not type:
-                raise SyntaxError(f'Different types : {variable.__class__} and {type}')
+            type_, reference = self._pointer_init()
+            if variable.__class__ is not type_:
+                raise SyntaxError(f'Different types {variable.__class__} and {type_}')
             variable.reference = reference
 
         else:
@@ -238,8 +224,8 @@ class Parser:
             if self.token in (COMMA, SEMICOLON, ASSIGNMENT):
                 self.memory.append(self.variable)
 
-            elif not self.is_WS_before(LSBR):
-                array = self.parse_array(name, pointer, mode=mode)
+            elif self.token is LSBR:
+                array = self._parse_array(name, pointer, mode=mode)
                 self.variable.value = array
                 self.memory.append(self.variable)
         else:
@@ -249,13 +235,10 @@ class Parser:
             self.variable = self.memory.last_viewed
             self._step()
 
-            if self.token is ASSIGNMENT:
-                pass
-            elif not self.is_WS_before(LSBR):
-                self.index = self.parse_array(name, pointer, mode=_SETITEM)
-            else:
-                raise SyntaxError(f'unacceptable token - <{self.token}>')
-
+            if self.token not in (ASSIGNMENT, LSBR):
+                raise SyntaxError(f'Unacceptable token {self.token}')
+            elif self.token is LSBR:
+                self.index = self._parse_array(name, pointer, mode=_SETITEM)
 
     def _classifier(self, mode):
         if mode == _ANNOUNCEMENT:
@@ -310,11 +293,19 @@ class Parser:
 
             self._step()
 
+
 if __name__ == '__main__':
-    l = Lexer('int a[] = {77 -(91*2)/3, 5}; int *q = &a; a[0] = *q + 2;')
-    # l = Lexer('int a[] = {77 -(91*2)/3}; int c = 33;')
-    # l = Lexer('int a[4] = {7 - 99*2- (88/3),3, 566.2, 4554-888};')
-    p = Parser(l)
+    L = Lexer('int a [] = {77 -(91*2)/3, 5}; int *q = &a[1]; a[0] = *q + 2;')
+    p = Parser(L)
     p.parse()
     print(p.memory)
-    # print(p.calculate_expression())
+
+    L1 = Lexer('int a[] = {77 -(91*2)/3}; int c = 33;')
+    p1 = Parser(L1)
+    p1.parse()
+    print(p1.memory)
+
+    L2 = Lexer('int a[4] = {7 - 99*2- (88/3),3, 566.2, 4554-888};')
+    p2 = Parser(L2)
+    p2.parse()
+    print(p2.memory)

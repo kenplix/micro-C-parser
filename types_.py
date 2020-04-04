@@ -101,6 +101,7 @@ class Integer(Numeric):
 
 
 class CHAR(Integer):
+
     size = 1
     min = -128
     max = 127
@@ -110,6 +111,7 @@ class CHAR(Integer):
 
 
 class SHORT(CHAR):
+
     size = 2
     min = -32768
     max = 32767
@@ -119,6 +121,7 @@ class SHORT(CHAR):
 
 
 class INT(SHORT):
+
     size = 4
     min = -2147483648
     max = 2147483647
@@ -128,6 +131,7 @@ class INT(SHORT):
 
 
 class LONG(INT):
+
     size = 4
     min = -2147483648
     max = 2147483647
@@ -141,6 +145,7 @@ class Floating(Numeric):
 
 
 class FLOAT(Floating):
+
     size = 4
     min = -3.4e+38
     max = 3.4e+38
@@ -150,6 +155,7 @@ class FLOAT(Floating):
 
 
 class DOUBLE(FLOAT):
+
     size = 8
     min = -1.7e+308
     max = 1.7e+308
@@ -158,11 +164,16 @@ class DOUBLE(FLOAT):
         super(Floating, self).__init__(name, pointer, reference, virtual_mode, type_of_numbers=float)
 
 
-# todo: у строк тоже есть указатели и это массив символов
 class STRING(Object, metaclass=Type):
 
-    def __init__(self, name=None, virtual_mode=False):
+    def __init__(self, name=None, pointer=False, reference=None, virtual_mode=False):
         super(STRING, self).__init__(name, virtual_mode)
+        self._pointer = pointer
+        self.reference = reference
+
+    @property
+    def pointer(self):
+        return self._pointer
 
     @property
     def value(self):
@@ -173,7 +184,7 @@ class STRING(Object, metaclass=Type):
         if isinstance(val, str):
             self._value = val
         else:
-            raise TypeError(f'значение {val} не является строчным')
+            raise TypeError(f'The value <{val}> is not string')
 
 
 class Memory(list):
@@ -182,26 +193,25 @@ class Memory(list):
         list.__init__([])
         self.last_viewed = None
 
-    def get_by_id(self, id, throw = False):
+    def get_by_id(self, id_, throw=False):
         for variable in self:
-
             if isinstance(variable.value, ARRAY):
-                if variable.id <= id <= variable.id + variable.value.length - 1:
+                if variable.id <= id_ <= variable.id + variable.value.length - 1:
                     return variable
             else:
                 if id == variable.id:
                     self.last_viewed = variable
                     return variable
         if throw:
-            raise Exception(f'Variable with id - <{id}> not declared')
+            raise Exception(f'Variable with id <{id}> not declared')
 
-    def get_by_name(self, name: str, throw = False):
+    def get_by_name(self, name: str, throw=False):
         for variable in self:
             if name == variable.name:
                 self.last_viewed = variable
                 return variable
         if throw:
-            raise Exception(f'Variable name - <{name}> not declared')
+            raise Exception(f'Variable name <{name}> not declared')
 
 
 class NonNegative:
@@ -211,7 +221,7 @@ class NonNegative:
 
     def __set__(self, instance, value):
         if value < 0:
-            raise ValueError('Cannot be negative.')
+            raise ValueError('Cannot be negative')
         instance.__dict__[self.name] = value
 
     def __set_name__(self, owner, name):
@@ -233,6 +243,7 @@ class ARRAY(list):
 
 
 class Controller(ARRAY):
+
     def __init__(self, variable):
         super(Controller, self).__init__(variable.value.length)
         self.variable = variable
@@ -272,48 +283,3 @@ class Controller(ARRAY):
             raise IndexError(f'list index out of range - {self.length}')
 
         self.variable.value.append(self._data_checker(data))
-
-
-if __name__ == '__main__':
-    # print(isinstance(CHAR('qwewq'), Integer))
-    t = Type('kek', (), {})
-    # num = Numeric('lol', False, False, False, int)
-    # n = Integer(False, False, False, False, False)
-    # w = CHAR()
-    # print('lol')
-
-    # '''test = CHAR('TEST')
-    #   test.set_value(False, False, DataStorage(length=3))'''
-
-    a = CHAR('a', False)
-    # print(a)
-    mem = Memory()
-    mem.append(a)
-    print(mem)
-    # print(mem.get('b'))
-    print()
-    b = INT('b')
-    print(b)
-    c = FLOAT('c')
-    print(c)
-    c.value = 12345
-    print(c)
-    d = INT('d')
-    print(d)
-    s = CHAR('s', False)
-    print(s)
-    # s.value = 333333.57
-    print(s)
-
-    st = ARRAY()
-    print('jhebfjhebker   ', st)
-    s.value = st
-    # st.add(c)
-    # s.set_value(s.pointer, s.reference, st)
-    array = Controller(s)
-    print(array)
-    array.append(123)
-    print(array)
-    lol_var = INT('lol')
-    print(crop(LONG, LONG, 355))
-    print(s.__class__.__name__)
