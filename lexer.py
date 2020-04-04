@@ -48,14 +48,14 @@ class Lexer:
 
     ch = ' '  # assume the first char is a space (not EOF)
 
-    def __init__(self, code):
+    def __init__(self, code) -> None:
         self.code = code
         self.iterator = iter(code)
         self.token = START
         self.index = -1  # because first ch is a space
         self.line = 0
 
-    def _next_char(self):
+    def _next_char(self) -> None:
         try:
             if self.ch == '\n':
                 self.line += 1
@@ -66,7 +66,7 @@ class Lexer:
         except StopIteration:
             self.ch = ''
 
-    def _recognize_symbol(self):
+    def _recognize_symbol(self) -> None:
         ch = self.ch
 
         if self.ch in ('<', '>'):
@@ -112,7 +112,7 @@ class Lexer:
             self.token = Lexer.SYMBOLS[self.ch]
             self._next_char()
 
-    def _recognize_number(self):
+    def _recognize_number(self) -> None:
         temp_value = ''
         while self.ch.isdigit() or self.ch == '.':
             temp_value += self.ch
@@ -123,7 +123,7 @@ class Lexer:
         self.value = float(temp_value) if '.' in temp_value else int(temp_value)
         self.token = CONSTANT
 
-    def _recognize_word(self):
+    def _recognize_word(self) -> None:
         temp_var_name = ''
         while self.ch.isalnum() or self.ch == '_':
             temp_var_name += self.ch
@@ -138,14 +138,14 @@ class Lexer:
             self.name = temp_var_name
 
     @staticmethod
-    def check_grammar(prev_token, curr_token):
+    def check_grammar(prev_token, curr_token) -> None:
         if prev_token in Lexer.TYPES.values():
             prev_token = prev_token(virtual_mode=True)
         else:
             prev_token = prev_token()
         prev_token.inheritor = curr_token
 
-    def next_token(self):
+    def next_token(self) -> None:
         prev_token = self.token
         self.name = None
         self.value = None

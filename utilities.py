@@ -25,7 +25,7 @@ class cached_property:
 
 class Checker:
 
-    def __setattr__(self, key, value):
+    def __setattr__(self, key: str, value):
         if key != 'inheritor':
             raise AttributeError
 

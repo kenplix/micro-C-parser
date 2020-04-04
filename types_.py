@@ -1,13 +1,14 @@
 """
 Performs all callbacks associated with C data types
 """
+from typing import Union, Optional
 
 from utilities import *
 
 memory = map(lambda x: x, range(0, 1000))
 
 
-def type_crop(from_type, to_type, number):
+def type_crop(from_type, to_type, number: Union[int, float]) -> Union[int, float]:
     if issubclass(from_type, Integer) and issubclass(to_type, Floating):
         return float(number)
     elif issubclass(from_type, Floating) and issubclass(to_type, Integer):
@@ -16,7 +17,7 @@ def type_crop(from_type, to_type, number):
         return number
 
 
-def crop(from_type, to_type, number):
+def crop(from_type, to_type, number: Union[int, float]):
     bias = from_type.size - to_type.size
     integer_part = int(number)
     float_part = number - integer_part
@@ -29,11 +30,11 @@ def crop(from_type, to_type, number):
     return type_crop(from_type, to_type, integer_part + float_part)
 
 
-def in_range(cls, number):
+def in_range(cls, number: Union[int, float]):
     return True if cls.min <= number <= cls.max else False
 
 
-def determine_type(number):
+def determine_type(number: Union[int, float]):
     """Automatically determines the type of number"""
     find_all_sub(Integer) if isinstance(number, int) else find_all_sub(Floating)
     for cls in subclasses:
@@ -43,7 +44,7 @@ def determine_type(number):
 
 class Object:
 
-    def __init__(self, name, virtual_mode):
+    def __init__(self, name: str, virtual_mode: bool) -> None:
         if not virtual_mode:
             self.id = next(memory)
 
@@ -66,7 +67,7 @@ class Type(type):
 
 class Numeric(Object, metaclass=Type):
 
-    def __init__(self, name, pointer, reference, virtual_mode, type_of_numbers):
+    def __init__(self, name: str, pointer: bool, reference: Optional[int], virtual_mode: bool, type_of_numbers):
         super(Numeric, self).__init__(name, virtual_mode)
         self._pointer = pointer
         self.reference = reference
@@ -193,11 +194,11 @@ class STRING(Object, metaclass=Type):
 
 class Memory(list):
 
-    def __init__(self):
+    def __init__(self) -> None:
         list.__init__([])
         self.last_viewed = None
 
-    def get_by_id(self, id_, throw=False):
+    def get_by_id(self, id_: int, throw: bool = False):
         for variable in self:
             if isinstance(variable.value, ARRAY):
                 if variable.id <= id_ <= variable.id + variable.value.length - 1:
@@ -209,13 +210,19 @@ class Memory(list):
         if throw:
             raise Exception(f'Variable with id <{id}> not declared')
 
-    def get_by_name(self, name: str, throw=False):
+    def get_by_name(self, name: str, throw: bool = False):
         for variable in self:
             if name == variable.name:
                 self.last_viewed = variable
                 return variable
         if throw:
             raise Exception(f'Variable name <{name}> not declared')
+
+    def __repr__(self):
+        string = ''
+        for variable in self:
+            string += f'{variable}\n'
+        return string
 
 
 class NonNegative:
@@ -235,12 +242,12 @@ class NonNegative:
 class ARRAY(list):
     length = NonNegative()
 
-    def __init__(self, length):
+    def __init__(self, length: int) -> None:
         list.__init__([])
         self.length = length
         self.alloc_memory(length)
 
-    def alloc_memory(self, length):
+    def alloc_memory(self, length: int) -> None:
         if self.__class__ is not Controller:
             for _ in range(length - 1):
                 next(memory)
@@ -248,7 +255,7 @@ class ARRAY(list):
 
 class Controller(ARRAY):
 
-    def __init__(self, variable):
+    def __init__(self, variable) -> None:
         super(Controller, self).__init__(variable.value.length)
         self.variable = variable
         self.counter = 0
@@ -256,7 +263,7 @@ class Controller(ARRAY):
     def __repr__(self):
         return f'{self.variable.value}'
 
-    def _check_type_compatibility(self, variable):
+    def _check_type_compatibility(self, variable) -> Union[int, float]:
         if self.variable.pointer != variable.pointer:
             raise TypeError(f'different types of pointers')
         if isinstance(variable.value, ARRAY):
@@ -267,21 +274,21 @@ class Controller(ARRAY):
                          to_type=self.variable.__class__,
                          number=variable.value)
 
-    def _add_number(self, number):
+    def _add_number(self, number: Union[int, float]) -> Union[int, float]:
         variable = determine_type(number)(virtual_mode=True)
         variable.value = number
         return self._check_type_compatibility(variable=variable)
 
-    def _data_checker(self, data):
+    def _data_checker(self, data) -> Union[int, float]:
         if isinstance(data, int) or isinstance(data, float):
             return self._add_number(data)
         else:
             return self._check_type_compatibility(variable=data)
 
-    def setitem(self, data, position):
+    def setitem(self, data, position: int) -> None:
         self.variable.value[position] = self._data_checker(data)
 
-    def append(self, data):
+    def append(self, data) -> None:
         self.counter += 1
         if self.counter > self.length:
             raise IndexError(f'list index out of range - {self.length}')

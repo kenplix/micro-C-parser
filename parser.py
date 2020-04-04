@@ -14,26 +14,26 @@ _REFERENCE = 'reference'
 
 class Parser:
 
-    def __init__(self, lexer):
-        self.lexer = lexer
+    def __init__(self, lexer) -> None:
+        self._lexer = lexer
         self.memory = types_.Memory()
 
         self.token = None
         self.index = None
 
-    def _step(self):
-        self.lexer.next_token()
-        self.ch = self.lexer.ch
-        self.name = self.lexer.name
-        self.value = self.lexer.value
-        self.token = self.lexer.token
+    def _step(self) -> None:
+        self._lexer.next_token()
+        self.ch = self._lexer.ch
+        self.name = self._lexer.name
+        self.value = self._lexer.value
+        self.token = self._lexer.token
 
     # arr[<expression>] = {<expression>, <expression>, ..., <expression>}
-    def _parse_array(self, name, pointer=False, *, mode):
+    def _parse_array(self, name: str, pointer: bool = False, *, mode: str):
         """
         Defines actions with arrays
         """
-        def define_action(dimension):
+        def define_action(dimension: int):
             if isinstance(dimension, int):
                 if mode == _ANNOUNCEMENT:
                     self._step()
@@ -61,10 +61,10 @@ class Parser:
         value = self.calculate_expression(stop_tokens=(RSBR,))  # in [...]
         return define_action(value)
 
-    def _set_array_elem(self, controller: types_.Controller):
+    def _set_array_elem(self, controller: types_.Controller) -> None:
         controller.setitem(self.calculate_expression(), self.index)
 
-    def _array_init(self, controller: types_.Controller):
+    def _array_init(self, controller: types_.Controller) -> None:
         temp_array = []
         if self.token is LBRC:
             self._step()
@@ -117,7 +117,7 @@ class Parser:
         else:
             raise SyntaxError(f'Unacceptable token {self.token}')
 
-    def _scroller(self, token):
+    def _scroller(self, token) -> None:
         while self.token != token:
             self._step()
             if self.token is EOF:
@@ -199,7 +199,7 @@ class Parser:
 
         return expression.find_value()
 
-    def _initializer(self, variable):
+    def _initializer(self, variable) -> None:
         """
         Defines initialization mode
         """
@@ -218,7 +218,7 @@ class Parser:
         else:
             variable.value = self.calculate_expression()
 
-    def _constructor(self, name, pointer, mode):
+    def _constructor(self, name: str, pointer: bool, mode: str) -> None:
         """
         Prepares collected data
         """
@@ -248,7 +248,7 @@ class Parser:
             elif self.token is LSBR:
                 self.index = self._parse_array(name, pointer, mode=_SETITEM)
 
-    def _classifier(self, mode):
+    def _classifier(self, mode: str) -> None:
         """
         Defines a part: *var or var
         """
@@ -263,7 +263,7 @@ class Parser:
         elif self.token is VARIABLE:
             self._constructor(name=self.name, pointer=False, mode=mode)
 
-    def _determinator(self, mode: str):
+    def _determinator(self, mode: str) -> None:
         """
         Determines the next step by set mode
 
@@ -294,7 +294,7 @@ class Parser:
             else:
                 raise SyntaxError('You cannot initialize more than one variable in a declaration line')
 
-    def parse(self):
+    def parse(self) -> None:
         self._step()
         while self.token != EOF:
             if self.token in Lexer.TYPES.values():

@@ -204,19 +204,16 @@ class RBRC(Checker):
 
 # no implementation
 class IF(Checker):
-
     pass
 
 
 # no implementation
 class ELSE(Checker):
-
     pass
 
 
 # no implementation
 class WHILE(Checker):
-
     pass
 
 

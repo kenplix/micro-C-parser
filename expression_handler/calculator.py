@@ -1,6 +1,7 @@
-'''
+"""
 Processes mathematical expressions of any nesting
-'''
+"""
+
 
 import operator
 
@@ -21,20 +22,19 @@ class Calculator:
                          '||': operator.or_,
                          '^': operator.xor}
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.token_storage = []
 
-    @staticmethod
-    def check_brackets_conditions(nomenclature):
-        op_br_count, cl_br_count = nomenclature.count('('), nomenclature.count(')')
-        nomenclature.insert(0, '(')
-        nomenclature.append(')')
+    def check_brackets_conditions(self):
+        op_br_count, cl_br_count = self.token_storage.count('('), self.token_storage.count(')')
+        self.token_storage.insert(0, '(')
+        self.token_storage.append(')')
 
         # fill with zeros for correct parsing of signed expressions
         i = 0
-        while i < len(nomenclature):
-            if i + 1 < len(nomenclature) and nomenclature[i] == '(' and nomenclature[i + 1] in ('-', '+'):
-                nomenclature.insert(i + 1, '0')
+        while i < len(self.token_storage):
+            if i + 1 < len(self.token_storage) and self.token_storage[i] == '(' and self.token_storage[i + 1] in ('-', '+'):
+                self.token_storage.insert(i + 1, '0')
                 i += 2
             else:
                 i += 1
@@ -42,7 +42,7 @@ class Calculator:
         def find_couples():
             # index brackets
             brackets_storage = []
-            for index, bracket in enumerate(nomenclature):
+            for index, bracket in enumerate(self.token_storage):
                 if bracket in ('(', ')'):
                     brackets_storage.append((index, bracket))
 
@@ -151,8 +151,8 @@ class Calculator:
         return calculated_hierarchy
 
     @staticmethod
-    def find_range(all, part):
-        temp = [zip((i, all[all.index(i) + 1]), part) for i in all if all.index(i) + 1 < len(all)]
+    def find_range(all_, part):
+        temp = [zip((i, all_[all_.index(i) + 1]), part) for i in all_ if all_.index(i) + 1 < len(all_)]
 
         start = None
         for i in temp:
@@ -192,7 +192,7 @@ class Calculator:
         return self.determine_type(last_result)
 
     def find_value(self):
-        br_pairs = self.check_brackets_conditions(self.token_storage)
+        br_pairs = self.check_brackets_conditions()
         hierarchy = self._build_hierarchy(br_pairs)
         primary_calculated_hierarchy = self._primary_calculations(hierarchy)
         return self._other_calculations(hierarchy, primary_calculated_hierarchy)
