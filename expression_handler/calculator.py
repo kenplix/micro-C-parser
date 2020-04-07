@@ -86,7 +86,7 @@ class Calculator:
                 else:
                     return res
             else:
-                raise SyntaxError(f'unknown operator - {operator}')
+                raise SyntaxError(f'Unknown operator - {operator}')
 
         for operator in operators:
             if operator in expression:
